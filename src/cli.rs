@@ -30,6 +30,7 @@ use crate::oauth2::TokenManager;
 Stdio is the default transport and does not prompt or write ordinary output.\n\n\
 The config file is --config, or MAIL_CONFIG_FILE, or ~/.mail-mcp/config.toml \
 (USERPROFILE on Windows). A leading ~/ is expanded. \
+MAIL_CONFIG_FILE=none selects no file. \
 An explicit missing file is an error at startup. \
 With no config file, MAIL_* variables and a legacy .env file are used, \
 including when HOME is unset. A config file disables .env discovery. \
@@ -293,7 +294,14 @@ async fn test_account(config: Option<PathBuf>, id: String) -> Result<(), CliFail
     }
     if server.graph_oauth2_accounts.contains_key(&id) {
         checked += 1;
-        report(&id, "graph", test_graph(&server, &id).await, &mut failed);
+        let result = test_graph(&server, &id).await;
+        let graph_failed = result.is_err();
+        report(&id, "graph", result, &mut failed);
+        if graph_failed {
+            println!(
+                "{id} graph: this check lists drafts, so a send-only token (Mail.Send alone) fails it"
+            );
+        }
     }
     if server.ews_accounts.contains_key(&id) || server.ews_oauth2_accounts.contains_key(&id) {
         checked += 1;
